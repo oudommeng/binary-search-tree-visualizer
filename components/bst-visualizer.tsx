@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
   AlertCircle, RotateCcw, Trash2,
-  Play, Pause, Menu, Maximize
+  Play, Pause, Menu, Maximize, History
 } from "lucide-react"
 
 // --- BST LOGIC (Unchanged) ---
@@ -142,6 +142,9 @@ export function BSTVisualizer() {
   const [consoleOutput, setConsoleOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // NEW: Input History State
+  const [inputHistory, setInputHistory] = useState<number[]>([])
+
   // Viewport
   const containerRef = useRef<HTMLDivElement>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -156,7 +159,6 @@ export function BSTVisualizer() {
   const autoFit = useCallback((currentNodes: NodePosition[]) => {
     if (!containerRef.current || currentNodes.length === 0) return
 
-    // 1. Calculate Bounds
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
     currentNodes.forEach(n => {
       if (n.x < minX) minX = n.x
@@ -165,23 +167,15 @@ export function BSTVisualizer() {
       if (n.y > maxY) maxY = n.y
     })
 
-    // 2. Add Padding
     const padding = 80
     const treeWidth = maxX - minX + padding * 2
     const treeHeight = maxY - minY + padding * 2
-
-    // 3. Container Dimensions
     const { clientWidth, clientHeight } = containerRef.current
-
-    // 4. Calculate Zoom
     const scaleX = clientWidth / treeWidth
     const scaleY = clientHeight / treeHeight
     const newZoom = Math.min(Math.min(scaleX, scaleY), 1)
-
-    // 5. Calculate Center
     const treeCenterX = (minX + maxX) / 2
     const treeCenterY = (minY + maxY) / 2
-
     const newPanX = (clientWidth / 2) - (treeCenterX * newZoom)
     const newPanY = (clientHeight / 2) - (treeCenterY * newZoom)
 
@@ -189,34 +183,25 @@ export function BSTVisualizer() {
     setPan({ x: newPanX, y: newPanY })
   }, [])
 
-  // --- NEW POSITIONING LOGIC (In-Order Layout) ---
+  // --- POSITIONING LOGIC ---
   const calculatePositions = useCallback((root: TreeNode | null) => {
     const positions: NodePosition[] = []
     if (!root) return positions
 
-    // We use a counter 'rank' to assign X positions based on sort order.
-    // This prevents overlaps because every node gets a unique X value.
     let rank = 0
 
     const traverse = (node: TreeNode, depth: number) => {
-      // Go Left first
       if (node.left) traverse(node.left, depth + 1)
-
-      // Assign Position
       positions.push({
-        x: rank * 60, // 60px horizontal spacing per node rank
-        y: depth * 80, // 80px vertical spacing per level
+        x: rank * 60,
+        y: depth * 80,
         value: node.value
       })
       rank++
-
-      // Go Right
       if (node.right) traverse(node.right, depth + 1)
     }
 
     traverse(root, 0)
-
-    // Center the tree horizontally around 0
     const totalWidth = rank * 60
     const xOffset = totalWidth / 2
 
@@ -238,7 +223,6 @@ export function BSTVisualizer() {
     }
   }, [bst, calculatePositions, autoFit])
 
-  // Center on mount
   useEffect(() => {
     if (containerRef.current) {
       setPan({ x: containerRef.current.clientWidth / 2, y: 100 })
@@ -266,14 +250,12 @@ export function BSTVisualizer() {
     moveDrag(e.clientX, e.clientY)
   }
   const handleMouseUp = () => setIsDragging(false)
-
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY)
   }
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 1) moveDrag(e.touches[0].clientX, e.touches[0].clientY)
   }
-
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault()
@@ -301,8 +283,10 @@ export function BSTVisualizer() {
       current = value < current.value ? current.left : current.right
     }
     if (bst.insert(value)) {
-      updateVisualization(false) // Don't auto-fit mid-sequence
+      updateVisualization(false)
       setFoundNode(value)
+      // Add to history
+      setInputHistory(prev => [...prev, value])
       setTimeout(() => setFoundNode(null), 800)
       return true
     }
@@ -334,7 +318,7 @@ export function BSTVisualizer() {
 
     setIsProcessing(false)
     setConsoleOutput("> Sequence Complete")
-    updateVisualization(true) // Auto fit at the end
+    updateVisualization(true)
 
     setTimeout(() => {
       setSequenceQueue([])
@@ -350,6 +334,8 @@ export function BSTVisualizer() {
       updateVisualization(true)
       setInput("")
       setConsoleOutput(`> Deleted node: ${value}`)
+      // Remove from history
+      setInputHistory(prev => prev.filter(v => v !== value))
     } else {
       setError(`Node ${value} not found.`)
     }
@@ -392,6 +378,8 @@ export function BSTVisualizer() {
     updateVisualization(true)
     setConsoleOutput("> Tree cleared")
     setSequenceQueue([])
+    // Clear History
+    setInputHistory([])
     setIsProcessing(false)
   }
 
@@ -559,7 +547,7 @@ export function BSTVisualizer() {
         </div>
 
         {/* --- CONTROLS --- */}
-        <div className="order-2 md:order-1 flex-none w-full md:w-80 bg-white/95 backdrop-blur-sm border-t md:border-t-0 md:border-r border-slate-200 z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] md:shadow-none">
+        <div className="order-2 md:order-1 flex-none w-full md:w-80 bg-white/95 backdrop-blur-sm border-t md:border-t-0 md:border-r border-slate-200 z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] md:shadow-none overflow-y-auto">
           <div className="p-4 md:p-6 flex flex-col gap-4">
 
             {/* Row 1: Input + DELETE Button */}
@@ -608,22 +596,42 @@ export function BSTVisualizer() {
                 <label className="text-[10px] md:text-xs font-bold text-[#12284C] uppercase tracking-wider">Traversals</label>
                 <div className="grid grid-cols-3 md:grid-cols-1 gap-2">
                   <Button onClick={() => handleTraversal('pre')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-red-400 mr-2"></span> Pre-Order
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-red-400 mr-2"></span> Pre
                   </Button>
                   <Button onClick={() => handleTraversal('in')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In-Order
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In
                   </Button>
                   <Button onClick={() => handleTraversal('post')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Post-Order
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Post
                   </Button>
                 </div>
               </div>
 
-              <div className="md:mt-auto pt-2">
+              <div className="pt-2">
                 <Button onClick={handleReset} variant="outline" className="w-full border-slate-200 text-slate-500 h-8 md:h-9 text-xs md:text-sm">
                   <RotateCcw className="w-3 h-3 md:w-4 md:h-4 mr-2" /> Reset
                 </Button>
               </div>
+
+              {/* --- INPUT HISTORY LIST --- */}
+              {inputHistory.length > 0 && (
+                <div className="border-t border-slate-100 pt-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      <History className="w-3 h-3" /> Input History
+                    </span>
+                    <span className="text-[9px] text-slate-400">{inputHistory.length} nodes</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
+                    {inputHistory.map((val, idx) => (
+                      <span key={`${val}-${idx}`} className="text-[10px] md:text-xs font-mono font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-md border border-slate-200 select-none">
+                        {val}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
 
           </div>
