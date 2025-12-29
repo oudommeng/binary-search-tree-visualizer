@@ -21,8 +21,17 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Binary Search Tree Visualization - By SSO',
     description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
-    images: ['/bst_sso.png'],
+    siteName: 'BST Visualizer by Team SSO',
     type: 'website',
+    locale: 'en_US',
+    images: [
+      {
+        url: '/bst_sso.png',
+        width: 1200,
+        height: 630,
+        alt: 'Binary Search Tree Visualization Preview',
+      }
+    ],
   },
   twitter: {
     card: 'summary_large_image',
@@ -30,6 +39,7 @@ export const metadata: Metadata = {
     description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
     images: ['/bst_sso.png'],
   },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'),
 }
 
 export default function RootLayout({
