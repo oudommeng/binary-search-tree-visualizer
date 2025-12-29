@@ -5,15 +5,26 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
   AlertCircle, RotateCcw, Trash2,
-  Play, Pause, Menu, Maximize, History
+  Play, Pause, Menu, Maximize, History, Search, Terminal, Info
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 // --- BST LOGIC (Unchanged) ---
 class TreeNode {
+  id: string
   value: number
   left: TreeNode | null
   right: TreeNode | null
+
   constructor(value: number) {
+    this.id = Math.random().toString(36).substr(2, 9)
     this.value = value
     this.left = null
     this.right = null
@@ -113,6 +124,7 @@ class BinarySearchTree {
 
 // --- VISUALIZER THEME ---
 interface NodePosition {
+  id: string
   x: number
   y: number
   value: number
@@ -126,6 +138,23 @@ const THEME = {
   orange: "#f59e0b",
 }
 
+interface LogEntry {
+  id: number
+  message: string
+  type: 'success' | 'error' | 'info'
+  timestamp: string
+}
+
+interface QueueItem {
+  id: string
+  value: number
+}
+
+interface HistoryItem {
+  id: string
+  value: number
+}
+
 export function BSTVisualizer() {
   const [bst] = useState(() => new BinarySearchTree())
   const [nodes, setNodes] = useState<NodePosition[]>([])
@@ -135,18 +164,23 @@ export function BSTVisualizer() {
   const [activeNode, setActiveNode] = useState<number | null>(null)
   const [highlightedPath, setHighlightedPath] = useState<Set<number>>(new Set())
   const [foundNode, setFoundNode] = useState<number | null>(null)
-  const [sequenceQueue, setSequenceQueue] = useState<number[]>([])
+  const [sequenceQueue, setSequenceQueue] = useState<QueueItem[]>([])
   const [currentSeqIndex, setCurrentSeqIndex] = useState<number>(-1)
   const [isProcessing, setIsProcessing] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [consoleOutput, setConsoleOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // NEW: Input History State
-  const [inputHistory, setInputHistory] = useState<number[]>([])
+  // Input History & Logs
+  const [inputHistory, setInputHistory] = useState<HistoryItem[]>([])
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const logIdCounter = useRef(0)
+  const queueIdCounter = useRef(0)
+  const historyIdCounter = useRef(0)
 
-  // Viewport
+  // Viewport & Refs
   const containerRef = useRef<HTMLDivElement>(null)
+  const sequenceTapeRef = useRef<HTMLDivElement>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
@@ -154,6 +188,26 @@ export function BSTVisualizer() {
 
   // Mobile Toggle
   const [showExtras, setShowExtras] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+
+  // --- AUTO SCROLL QUEUE ---
+  useEffect(() => {
+    if (sequenceTapeRef.current) {
+      sequenceTapeRef.current.scrollLeft = sequenceTapeRef.current.scrollWidth
+    }
+  }, [sequenceQueue, currentSeqIndex])
+
+  // --- LOGGING HELPER ---
+  const addLog = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const now = new Date()
+    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+
+    logIdCounter.current += 1
+    setLogs(prev => [
+      { id: logIdCounter.current, message, type, timestamp: timeString },
+      ...prev
+    ])
+  }
 
   // --- AUTO FIT LOGIC ---
   const autoFit = useCallback((currentNodes: NodePosition[]) => {
@@ -193,6 +247,7 @@ export function BSTVisualizer() {
     const traverse = (node: TreeNode, depth: number) => {
       if (node.left) traverse(node.left, depth + 1)
       positions.push({
+        id: node.id,
         x: rank * 60,
         y: depth * 80,
         value: node.value
@@ -214,14 +269,16 @@ export function BSTVisualizer() {
   const updateVisualization = useCallback((shouldAutoFit = false) => {
     const positions = calculatePositions(bst.root)
     setNodes(positions)
-    setActiveNode(null)
-    setHighlightedPath(new Set())
-    setFoundNode(null)
-
     if (shouldAutoFit) {
       setTimeout(() => autoFit(positions), 50)
     }
   }, [bst, calculatePositions, autoFit])
+
+  const clearHighlights = () => {
+    setActiveNode(null)
+    setHighlightedPath(new Set())
+    setFoundNode(null)
+  }
 
   useEffect(() => {
     if (containerRef.current) {
@@ -265,9 +322,57 @@ export function BSTVisualizer() {
     }
   }
 
+  // --- SEARCH LOGIC ---
+  const handleSearch = async () => {
+    if (isProcessing || !input.trim()) return
+
+    const value = Number.parseInt(input)
+    if (isNaN(value)) return
+
+    setIsProcessing(true)
+    resetError()
+    clearHighlights()
+    setConsoleOutput(`> Searching: ${value}`)
+    setInput("")
+
+    let current = bst.root
+    const path = new Set<number>()
+    let found = false
+
+    while (current) {
+      path.add(current.value)
+      setHighlightedPath(new Set(path))
+      await new Promise((r) => setTimeout(r, 500 / speed))
+
+      if (current.value === value) {
+        found = true
+        setFoundNode(value)
+        setConsoleOutput(`> Found: ${value}`)
+        addLog(`Found: ${value}`, 'success')
+        break
+      }
+
+      if (value < current.value) {
+        current = current.left
+      } else {
+        current = current.right
+      }
+    }
+
+    if (!found) {
+      setError(`Node ${value} not found.`)
+      addLog(`Missing: ${value}`, 'error')
+      setTimeout(() => setHighlightedPath(new Set()), 1500)
+    }
+
+    setIsProcessing(false)
+    setTimeout(clearHighlights, 2000)
+  }
+
   // --- CORE LOGIC ---
   const visualizeSingleInsert = async (value: number) => {
     resetError()
+    clearHighlights()
     setConsoleOutput(`> Processing: ${value}`)
     let current = bst.root
     const path = new Set<number>()
@@ -276,7 +381,8 @@ export function BSTVisualizer() {
       setHighlightedPath(new Set(path))
       await new Promise((r) => setTimeout(r, 400 / speed))
       if (value === current.value) {
-        setError(`Node ${value} exists (Skipped)`)
+        setError(`Duplicate: ${value}`)
+        addLog(`Duplicate: ${value}`, 'error')
         setHighlightedPath(new Set())
         return false
       }
@@ -285,8 +391,9 @@ export function BSTVisualizer() {
     if (bst.insert(value)) {
       updateVisualization(false)
       setFoundNode(value)
-      // Add to history
-      setInputHistory(prev => [...prev, value])
+      historyIdCounter.current += 1
+      setInputHistory(prev => [...prev, { id: `hist-${historyIdCounter.current}`, value }])
+      addLog(`Inserted: ${value}`, 'success')
       setTimeout(() => setFoundNode(null), 800)
       return true
     }
@@ -302,10 +409,15 @@ export function BSTVisualizer() {
       const success = await visualizeSingleInsert(values[0])
       setInput("")
       if (success) updateVisualization(true)
+      setTimeout(clearHighlights, 1500)
       return
     }
 
-    setSequenceQueue(values)
+    setSequenceQueue(values.map((v, idx) => {
+      queueIdCounter.current += 1
+      return { id: `seq-${queueIdCounter.current}`, value: v }
+    }))
+    addLog(`Batch: [${values.join(", ")}]`, 'info')
     setCurrentSeqIndex(-1)
     setIsProcessing(true)
     setInput("")
@@ -323,6 +435,7 @@ export function BSTVisualizer() {
     setTimeout(() => {
       setSequenceQueue([])
       setCurrentSeqIndex(-1)
+      clearHighlights()
     }, 2000)
   }
 
@@ -330,14 +443,19 @@ export function BSTVisualizer() {
     const value = Number.parseInt(input)
     if (isNaN(value)) return
     resetError()
-    if (bst.delete(value)) {
+    clearHighlights()
+
+    const found = bst.find(value)
+    if (found) {
+      bst.delete(value)
       updateVisualization(true)
       setInput("")
-      setConsoleOutput(`> Deleted node: ${value}`)
-      // Remove from history
-      setInputHistory(prev => prev.filter(v => v !== value))
+      setConsoleOutput(`> Deleted: ${value}`)
+      addLog(`Deleted: ${value}`, 'success')
+      setInputHistory(prev => prev.filter(v => v.value !== value))
     } else {
       setError(`Node ${value} not found.`)
+      addLog(`Delete Failed: ${value}`, 'error')
     }
   }
 
@@ -346,8 +464,7 @@ export function BSTVisualizer() {
     updateVisualization(true)
     setIsProcessing(true)
     resetError()
-    setFoundNode(null)
-    setHighlightedPath(new Set())
+    clearHighlights()
 
     let result: number[] = []
     let name = ""
@@ -358,6 +475,7 @@ export function BSTVisualizer() {
 
     if (result.length === 0) {
       setConsoleOutput("> Tree is empty")
+      addLog(`Empty Tree`, 'error')
       setIsProcessing(false)
       return
     }
@@ -369,8 +487,13 @@ export function BSTVisualizer() {
       setConsoleOutput(`> ${name}: [ ${currentOutput.join(", ")} ]`)
       await new Promise(resolve => setTimeout(resolve, 600 / speed))
     }
+
+    // LOG THE FULL LIST RESULT
+    addLog(`${name}: [${result.join(", ")}]`, 'success')
+
     setActiveNode(null)
     setIsProcessing(false)
+    setTimeout(clearHighlights, 2000)
   }
 
   const handleReset = () => {
@@ -378,27 +501,32 @@ export function BSTVisualizer() {
     updateVisualization(true)
     setConsoleOutput("> Tree cleared")
     setSequenceQueue([])
-    // Clear History
     setInputHistory([])
+    logIdCounter.current = 0
+    queueIdCounter.current = 0
+    historyIdCounter.current = 0
+    setLogs([])
+    addLog("--- RESET ---", 'info')
+    clearHighlights()
     setIsProcessing(false)
   }
 
   const resetError = () => setError(null)
 
   const getEdges = () => {
-    const edges: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
+    const edges: Array<{ key: string; x1: number; y1: number; x2: number; y2: number }> = []
     const traverse = (node: TreeNode | null) => {
       if (!node) return
-      const parentPos = nodes.find(n => n.value === node.value)
+      const parentPos = nodes.find(n => n.id === node.id)
       if (parentPos) {
         if (node.left) {
-          const child = nodes.find(n => n.value === node.left!.value)
-          if (child) edges.push({ x1: parentPos.x, y1: parentPos.y, x2: child.x, y2: child.y })
+          const child = nodes.find(n => n.id === node.left!.id)
+          if (child) edges.push({ key: `${node.id}-${node.left.id}`, x1: parentPos.x, y1: parentPos.y, x2: child.x, y2: child.y })
           traverse(node.left)
         }
         if (node.right) {
-          const child = nodes.find(n => n.value === node.right!.value)
-          if (child) edges.push({ x1: parentPos.x, y1: parentPos.y, x2: child.x, y2: child.y })
+          const child = nodes.find(n => n.id === node.right!.id)
+          if (child) edges.push({ key: `${node.id}-${node.right.id}`, x1: parentPos.x, y1: parentPos.y, x2: child.x, y2: child.y })
           traverse(node.right)
         }
       }
@@ -415,11 +543,79 @@ export function BSTVisualizer() {
         <div className="flex items-center gap-2 md:gap-3">
           <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-[#12284C] flex items-center justify-center text-white font-bold text-base md:text-lg">B</div>
           <div>
-            <h1 className="text-sm md:text-lg font-bold tracking-tight text-[#12284C]">BST Visualizer - By SSO</h1>
+            <h1 className="text-sm md:text-lg font-bold tracking-tight text-[#12284C]">Binary Search Tree Visualization - By SSO</h1>
             <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Sequence Animator</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Dialog open={showInfo} onOpenChange={setShowInfo}>
+            <DialogTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-[#12284C]" title="BST Information">
+                <Info className="w-4 h-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold text-[#12284C]">Binary Search Tree Properties</DialogTitle>
+                <DialogDescription className="sr-only">Information about Binary Search Tree structure and properties</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                {/* Ordering Property */}
+                <div>
+                  <h3 className="text-lg font-semibold text-[#12284C] mb-2">Ordering Property</h3>
+                  <p className="text-sm text-slate-600">
+                    For each node, all values in the left subtree are less than the node's value, and all values in the right subtree are greater.
+                  </p>
+                </div>
+
+                {/* Time Complexity */}
+                <div>
+                  <h3 className="text-lg font-semibold text-[#12284C] mb-3">Time Complexity</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <p className="text-sm font-semibold text-[#12284C] mb-1">Insert:</p>
+                      <p className="text-sm text-slate-600">O(log n) average</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <p className="text-sm font-semibold text-[#12284C] mb-1">Search:</p>
+                      <p className="text-sm text-slate-600">O(log n) average</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <p className="text-sm font-semibold text-[#12284C] mb-1">Delete:</p>
+                      <p className="text-sm text-slate-600">O(log n) average</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <p className="text-sm font-semibold text-[#12284C] mb-1">Traversal:</p>
+                      <p className="text-sm text-slate-600">O(n)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Applications */}
+                <div>
+                  <h3 className="text-lg font-semibold text-[#12284C] mb-2">Applications</h3>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm text-slate-600">
+                      <span className="text-[#10b981] mt-0.5">•</span>
+                      <span>Searching and sorting</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-slate-600">
+                      <span className="text-[#10b981] mt-0.5">•</span>
+                      <span>Priority queues</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-slate-600">
+                      <span className="text-[#10b981] mt-0.5">•</span>
+                      <span>Database indexing</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-slate-600">
+                      <span className="text-[#10b981] mt-0.5">•</span>
+                      <span>Syntax trees in compilers</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button onClick={() => updateVisualization(true)} size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-[#12284C]" title="Auto Fit Tree">
             <Maximize className="w-4 h-4" />
           </Button>
@@ -480,13 +676,14 @@ export function BSTVisualizer() {
               >
                 <div className="bg-white/90 backdrop-blur-md px-4 py-3 rounded-xl shadow-xl border border-slate-200 flex flex-col items-center gap-2">
                   <span className="text-[9px] font-bold text-[#12284C] uppercase tracking-widest">Queue</span>
-                  <div className="flex gap-2 overflow-x-auto w-full p-1 mask-linear no-scrollbar">
-                    {sequenceQueue.map((val, idx) => {
+                  {/* AUTO SCROLL: Added ref here */}
+                  <div ref={sequenceTapeRef} className="flex gap-2 overflow-x-auto w-full p-1 mask-linear no-scrollbar scroll-smooth">
+                    {sequenceQueue.map((item, idx) => {
                       const isCurrent = idx === currentSeqIndex
                       const isDone = idx < currentSeqIndex
                       return (
                         <motion.div
-                          key={`${val}-${idx}`}
+                          key={item.id}
                           animate={{
                             scale: isCurrent ? 1.1 : 1,
                             backgroundColor: isCurrent ? THEME.orange : isDone ? "#dcfce7" : "#f1f5f9",
@@ -495,7 +692,7 @@ export function BSTVisualizer() {
                           }}
                           className="w-8 h-8 min-w-[32px] rounded border flex items-center justify-center font-mono font-bold text-xs shadow-sm"
                         >
-                          {val}
+                          {item.value}
                         </motion.div>
                       )
                     })}
@@ -508,8 +705,8 @@ export function BSTVisualizer() {
           {/* Tree Rendering */}
           <motion.div className="absolute top-0 left-0 origin-top-left will-change-transform" style={{ x: pan.x, y: pan.y, scale: zoom }}>
             <svg className="overflow-visible" style={{ width: 1, height: 1 }}>
-              {getEdges().map((edge, i) => (
-                <motion.line key={`edge-${i}`}
+              {getEdges().map((edge) => (
+                <motion.line key={edge.key}
                   initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
                   x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2}
                   stroke={THEME.navy} strokeWidth="2" strokeOpacity={0.3}
@@ -523,7 +720,7 @@ export function BSTVisualizer() {
                 const isFound = foundNode === node.value
                 return (
                   <motion.div
-                    key={node.value}
+                    key={node.id}
                     initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                     style={{ position: "absolute", left: node.x, top: node.y, x: "-50%", y: "-50%" }}
                   >
@@ -561,7 +758,6 @@ export function BSTVisualizer() {
                 disabled={isProcessing}
                 className="flex-1 min-w-0 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#12284C] font-mono text-base text-[#12284C]"
               />
-              {/* DELETE BUTTON */}
               <Button onClick={handleDelete} disabled={isProcessing} variant="outline" size="icon" className="border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 rounded-lg w-12 shrink-0">
                 <Trash2 className="w-5 h-5" />
               </Button>
@@ -569,7 +765,6 @@ export function BSTVisualizer() {
 
             {/* Row 2 (Mobile): INSERT Button + Menu */}
             <div className="flex md:hidden items-center justify-between gap-2">
-              {/* INSERT BUTTON */}
               <Button onClick={handleInputSubmit} disabled={isProcessing} className="flex-1 h-10 bg-[#12284C] text-white hover:bg-[#1e3a6b] font-semibold tracking-wide">
                 {isProcessing ? <Pause className="w-4 h-4 mr-2 animate-pulse" /> : <Play className="w-4 h-4 mr-2" />}
                 {isProcessing ? "Running" : "Insert"}
@@ -592,17 +787,24 @@ export function BSTVisualizer() {
 
               <hr className="border-slate-100" />
 
+              {/* SEARCH BUTTON */}
+              <div className="pb-2">
+                <Button onClick={handleSearch} disabled={isProcessing} variant="secondary" className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 h-9">
+                  <Search className="w-4 h-4 mr-2" /> Search Value
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[10px] md:text-xs font-bold text-[#12284C] uppercase tracking-wider">Traversals</label>
                 <div className="grid grid-cols-3 md:grid-cols-1 gap-2">
                   <Button onClick={() => handleTraversal('pre')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-red-400 mr-2"></span> Pre-Order
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-red-400 mr-2"></span> Pre
                   </Button>
                   <Button onClick={() => handleTraversal('in')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In-Order
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In
                   </Button>
                   <Button onClick={() => handleTraversal('post')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Post-Order
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Post
                   </Button>
                 </div>
               </div>
@@ -622,15 +824,40 @@ export function BSTVisualizer() {
                     </span>
                     <span className="text-[9px] text-slate-400">{inputHistory.length} nodes</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
-                    {inputHistory.map((val, idx) => (
-                      <span key={`${val}-${idx}`} className="text-[10px] md:text-xs font-mono font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-md border border-slate-200 select-none">
-                        {val}
+                  <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
+                    {inputHistory.map((item) => (
+                      <span key={item.id} className="text-[10px] md:text-xs font-mono font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-md border border-slate-200 select-none">
+                        {item.value}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* --- ACTIVITY LOGS --- */}
+              <div className="border-t border-slate-100 pt-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <Terminal className="w-3 h-3" /> System Logs
+                  </span>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 h-24 overflow-y-auto font-mono text-[10px] flex flex-col gap-1">
+                  {logs.length === 0 ? (
+                    <span className="text-slate-400 italic">No activity recorded...</span>
+                  ) : (
+                    logs.map((log) => (
+                      <div key={log.id} className="flex gap-2">
+                        <span className="text-slate-400 shrink-0">{log.timestamp}</span>
+                        <span className={`break-words ${log.type === 'success' ? 'text-emerald-600' :
+                          log.type === 'error' ? 'text-red-500' : 'text-slate-600'
+                          }`}>
+                          {log.message}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
 
             </div>
 

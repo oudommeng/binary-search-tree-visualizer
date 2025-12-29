@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'BST Visualizer - By SSO',
-  description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
+  title: 'Binary Search Tree Visualization - By SSO',
+  description: 'Interactive Binary Search Tree Visualizer by Team 01 CADT - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
   authors: [
     { name: 'Pun Solita' },
     { name: 'Meng Oudom' },
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
     icon: '/icon.png',
   },
   openGraph: {
-    title: 'BST Visualizer - By SSO',
+    title: 'Binary Search Tree Visualization - By SSO',
     description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
     images: ['/bst_sso.png'],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BST Visualizer - By SSO',
+    title: 'Binary Search Tree Visualization - By SSO',
     description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
     images: ['/bst_sso.png'],
   },
