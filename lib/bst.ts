@@ -51,8 +51,10 @@ export class BinarySearchTree {
   }
 
   // 2. Deletion
-  delete(value: number): void {
+  delete(value: number): boolean {
+    const found = this.find(value);
     this.root = this._deleteNode(this.root, value);
+    return found;
   }
 
   private _deleteNode(node: TreeNode | null, key: number): TreeNode | null {

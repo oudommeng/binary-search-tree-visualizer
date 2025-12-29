@@ -1,72 +1,88 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useState, useMemo } from "react"
+import { motion, AnimatePresence, Variants } from "framer-motion"
 import Image from "next/image"
 
 interface SplashScreenProps {
   onComplete: () => void
 }
 
+const LOADING_STATES = [
+  "Initializing Visualizer...",
+  "Allocating Memory Nodes...",
+  "Balancing Binary Tree...",
+  "Optimizing Search Algorithms...",
+  "Ready to Visualize...",
+]
+
 export function SplashScreen({ onComplete }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true)
   const [progress, setProgress] = useState(0)
+  const [loadingText, setLoadingText] = useState(LOADING_STATES[0])
+
+  const particles = useMemo(() => {
+    return Array.from({ length: 20 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      duration: Math.random() * 10 + 10,
+      delay: Math.random() * 5,
+    }))
+  }, [])
 
   useEffect(() => {
-    // Smooth progress animation
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressInterval)
-          return 100
-        }
-        return prev + 2
+        if (prev >= 100) return 100
+        const increment = Math.random() * 4
+        return Math.min(prev + increment, 100)
       })
-    }, 30)
+    }, 50)
+
+    const textInterval = setInterval(() => {
+      setProgress((currentProgress) => {
+        const index = Math.floor((currentProgress / 100) * (LOADING_STATES.length - 1))
+        setLoadingText(LOADING_STATES[index])
+        return currentProgress
+      })
+    }, 100)
 
     const timer = setTimeout(() => {
       setIsVisible(false)
-      setTimeout(() => onComplete(), 500)
-    }, 3500)
+      setTimeout(() => onComplete(), 800)
+    }, 4500)
 
     return () => {
       clearTimeout(timer)
       clearInterval(progressInterval)
+      clearInterval(textInterval)
     }
   }, [onComplete])
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2,
+        staggerChildren: 0.1,
+        delayChildren: 0.3,
       },
     },
     exit: {
       opacity: 0,
-      scale: 0.95,
-      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+      scale: 1.1,
+      filter: "blur(10px)",
+      transition: { duration: 0.8 },
     },
   }
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
-    },
-  }
-
-  const logoVariants = {
-    hidden: { opacity: 0, scale: 0.8, rotate: -10 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      rotate: 0,
-      transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const },
+      transition: { duration: 0.5, ease: "easeOut" as const },
     },
   }
 
@@ -74,158 +90,146 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          className="fixed inset-0 z-50 bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center overflow-hidden"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-white text-[#12284C]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
         >
-          {/* Animated Background Elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <motion.div
-              className="absolute top-1/4 -left-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.5, 0.3],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Number.POSITIVE_INFINITY,
-                ease: "easeInOut",
-              }}
-            />
-            <motion.div
-              className="absolute bottom-1/4 -right-20 w-96 h-96 bg-green-500/5 rounded-full blur-3xl"
-              animate={{
-                scale: [1, 1.3, 1],
-                opacity: [0.3, 0.5, 0.3],
-              }}
-              transition={{
-                duration: 5,
-                repeat: Number.POSITIVE_INFINITY,
-                ease: "easeInOut",
-                delay: 1,
-              }}
-            />
+          {/* --- BACKGROUND FX --- */}
+          <div className="absolute inset-0 z-0">
+            {/* Grid Pattern using Brand Color at 3% opacity */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#12284C08_1px,transparent_1px),linear-gradient(to_bottom,#12284C08_1px,transparent_1px)] bg-[size:24px_24px]" />
+            <div className="absolute inset-0 bg-linear-to-t from-white via-transparent to-transparent" />
+
+            {particles.map((p) => (
+              <motion.div
+                key={p.id}
+                // Particles are a mix of Brand Blue and Data Green
+                className={`absolute w-2 h-2 rounded-full blur-[1px] ${p.id % 2 === 0 ? "bg-[#12284C]/10" : "bg-emerald-500/20"
+                  }`}
+                style={{ left: p.left, top: p.top }}
+                animate={{
+                  y: [0, -100, 0],
+                  opacity: [0.2, 0.6, 0.2],
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{
+                  duration: p.duration,
+                  repeat: Number.POSITIVE_INFINITY,
+                  delay: p.delay,
+                  ease: "linear",
+                }}
+              />
+            ))}
           </div>
 
+          {/* --- MAIN CONTENT --- */}
           <motion.div
-            className="relative z-10 flex flex-col items-center justify-center gap-8 max-w-2xl px-8"
+            className="relative z-10 w-full max-w-3xl px-6 flex flex-col items-center gap-8"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
-            {/* School Logo with Glow Effect */}
-            <motion.div variants={logoVariants} className="relative">
+            {/* Logo Container */}
+            <motion.div variants={itemVariants} className="relative group">
               <motion.div
-                className="absolute inset-0 bg-primary/20 rounded-2xl blur-2xl"
+                // Glow effect using the Brand Blue
+                className="absolute -inset-4 bg-linear-to-r from-[#12284C]/10 via-[#184076]/10 to-[#12284C]/10 rounded-full blur-xl"
                 animate={{
-                  scale: [1, 1.1, 1],
-                  opacity: [0.3, 0.5, 0.3],
+                  scale: [1, 1.05, 1],
+                  opacity: [0.5, 0.8, 0.5],
                 }}
-                transition={{
-                  duration: 2,
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeInOut",
-                }}
+                transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY }}
               />
-              <div className="relative w-72 h-36 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 shadow-2xl">
+              <div className="relative bg-white/60 backdrop-blur-xl border border-[#12284C]/10 rounded-2xl p-6 shadow-xl ring-1 ring-[#12284C]/5">
                 <Image
                   src="/cadt-logo.png"
-                  alt="Cambodia Academy of Digital Technology"
-                  width={288}
-                  height={144}
-                  priority
+                  alt="CADT Logo"
+                  width={240}
+                  height={120}
                   className="object-contain"
+                  priority
                 />
               </div>
             </motion.div>
 
-            {/* Project Title */}
+            {/* Title Section */}
             <motion.div variants={itemVariants} className="text-center space-y-2">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-primary via-green-500 to-primary bg-clip-text text-transparent">
-                Binary Search Tree Visualizer
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-widest text-[#12284C] drop-shadow-sm">
+                Binary Search Tree
               </h2>
+              <div className="flex items-center justify-center gap-3">
+                <div className="h-px w-12 bg-linear-to-r from-transparent to-green-600" />
+                <span className="text-sm font-mono text-green-600 tracking-[0.2em] uppercase font-bold">Visualizer</span>
+                <div className="h-px w-12 bg-linear-to-l from-transparent to-green-600" />
+              </div>
             </motion.div>
 
-            {/* Team Label with Card */}
-            <motion.div variants={itemVariants} className="relative">
-              <div className="bg-card/80 backdrop-blur-sm rounded-xl px-8 py-4 border border-border/50 shadow-xl">
-                <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-primary to-green-500 bg-clip-text text-transparent">
-                  Team 01
+            {/* Team Card */}
+            <motion.div
+              variants={itemVariants}
+              className="w-full bg-white/40 backdrop-blur-md border border-[#12284C]/10 rounded-xl overflow-hidden shadow-lg"
+            >
+              <div className="bg-[#12284C]/5 border-b border-[#12284C]/10 px-4 py-2 flex items-center justify-between">
+                <span className="text-xs font-mono text-[#12284C]/60">/// SYSTEM_USERS</span>
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-red-400" />
+                  <div className="w-2 h-2 rounded-full bg-amber-400" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                </div>
+              </div>
+
+              <div className="p-6">
+                <h1 className="text-center text-xl font-bold text-[#12284C] mb-6 tracking-wide">
+                  <span className="text-green-600">&lt;</span> TEAM 01 <span className="text-green-600">/&gt;</span>
                 </h1>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { name: "Pun Solita", role: "Dev" },
+                    { name: "Meng Oudom", role: "Lead" },
+                    { name: "Khoun Sovansunchhay", role: "Dev" },
+                  ].map((member, i) => (
+                    <motion.div
+                      key={i}
+                      whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.8)" }}
+                      className="group relative bg-white/50 rounded-lg p-3 border border-[#12284C]/10 hover:border-[#12284C]/30 hover:shadow-md transition-all cursor-default"
+                    >
+                      <div className="flex flex-col items-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#12284C] mb-2 group-hover:scale-125 transition-all" />
+                        <p className="text-sm font-bold text-[#12284C]">{member.name}</p>
+                        <p className="text-[10px] text-[#12284C]/60 font-mono mt-1 uppercase opacity-0 group-hover:opacity-100 transition-opacity">
+                          {member.role}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
             </motion.div>
 
-            {/* Team Members with Enhanced Cards */}
-            <motion.div variants={itemVariants} className="w-full">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-                {[
-                  { name: "Pun Solita", delay: 0 },
-                  { name: "Meng Oudom", delay: 0.1 },
-                  { name: "Khoun Sovansunchhay", delay: 0.2 },
-                ].map((member, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1 + member.delay, duration: 0.5 }}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    className="bg-card/60 backdrop-blur-sm rounded-lg px-6 py-4 border border-border/50 shadow-lg hover:shadow-xl hover:border-primary/50 transition-all duration-300"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <p className="text-base font-semibold text-foreground text-center">
-                        {member.name}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
+            {/* Loading Bar */}
+            <motion.div variants={itemVariants} className="w-full max-w-md space-y-3">
+              <div className="flex justify-between items-end px-1">
+                <span className="text-xs font-mono text-[#12284C] font-semibold min-w-[200px]">
+                  &gt; {loadingText}
+                </span>
+                <span className="text-xs font-mono text-[#12284C]/60">{Math.round(progress)}%</span>
               </div>
-            </motion.div>
 
-            {/* Progress Bar */}
-            <motion.div variants={itemVariants} className="w-full max-w-md space-y-2">
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden shadow-inner">
+              <div className="h-1 w-full bg-[#12284C]/10 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-linear-to-r from-primary via-green-500 to-primary rounded-full shadow-lg"
+                  className="h-full bg-linear-to-r from-green-600 to-emerald-400 relative"
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                />
-              </div>
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <motion.span
-                  key={progress}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ ease: "linear" }}
                 >
-                  Loading... {progress}%
-                </motion.span>
+                  <div className="absolute right-0 top-0 bottom-0 w-[20px] bg-white/40 blur-[2px]" />
+                </motion.div>
               </div>
             </motion.div>
 
-            {/* Animated Dots */}
-            <motion.div variants={itemVariants} className="flex gap-2">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-green-500 shadow-lg"
-                  animate={{
-                    scale: [1, 1.5, 1],
-                    opacity: [0.5, 1, 0.5],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Number.POSITIVE_INFINITY,
-                    delay: i * 0.2,
-                    ease: "easeInOut",
-                  }}
-                />
-              ))}
-            </motion.div>
           </motion.div>
         </motion.div>
       )}
