@@ -596,13 +596,13 @@ export function BSTVisualizer() {
                 <label className="text-[10px] md:text-xs font-bold text-[#12284C] uppercase tracking-wider">Traversals</label>
                 <div className="grid grid-cols-3 md:grid-cols-1 gap-2">
                   <Button onClick={() => handleTraversal('pre')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-red-400 mr-2"></span> Pre
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-red-400 mr-2"></span> Pre-Order
                   </Button>
                   <Button onClick={() => handleTraversal('in')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In-Order
                   </Button>
                   <Button onClick={() => handleTraversal('post')} disabled={isProcessing} variant="secondary" className="h-8 md:h-9 text-[10px] md:text-sm md:justify-start bg-slate-50 hover:bg-slate-100 text-slate-700">
-                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Post
+                    <span className="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Post-Order
                   </Button>
                 </div>
               </div>
