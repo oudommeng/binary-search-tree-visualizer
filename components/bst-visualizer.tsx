@@ -541,7 +541,7 @@ export function BSTVisualizer() {
       {/* --- HEADER --- */}
       <div className="flex-none h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-4 md:px-6 shadow-sm z-30">
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-[#12284C] flex items-center justify-center text-white font-bold text-base md:text-lg">B</div>
+          <img src="/icon.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 rounded-lg" />
           <div>
             <h1 className="text-sm md:text-lg font-bold tracking-tight text-[#12284C]">Binary Search Tree Visualization - By SSO</h1>
             <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Sequence Animator</p>
