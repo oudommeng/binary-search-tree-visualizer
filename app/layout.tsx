@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Binary Search Tree Visualization - By SSO',
-  description: 'Interactive Binary Search Tree Visualizer by Team 01 CADT - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
+  title: 'Binary Search Tree Visualization - Developed By SSO',
+  description: 'Explore and visualize Binary Search Trees interactively. Developed by Team SSO (Pun Solita, Meng Oudom, Khoun Sovansunchhay) - Team 01 MCS02 CADT. Perfect for learning data structures.',
   authors: [
     { name: 'Pun Solita' },
     { name: 'Meng Oudom' },
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     icon: '/icon.png',
   },
   openGraph: {
-    title: 'Binary Search Tree Visualization - By SSO',
-    description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
+    title: 'Binary Search Tree Visualization - Developed By SSO',
+    description: 'Explore and visualize Binary Search Trees interactively. Developed by Team SSO (Pun Solita, Meng Oudom, Khoun Sovansunchhay) - Team 01 MCS02 CADT. Perfect for learning data structures.',
     siteName: 'BST Visualizer by Team SSO',
     type: 'website',
     locale: 'en_US',
@@ -35,11 +35,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Binary Search Tree Visualization - By SSO',
-    description: 'Interactive Binary Search Tree Visualizer by Team 01 - Pun Solita, Meng Oudom, Khoun Sovansunchhay',
+    title: 'Binary Search Tree Visualization - Developed By SSO',
+    description: 'Explore and visualize Binary Search Trees interactively. Developed by Team SSO (Pun Solita, Meng Oudom, Khoun Sovansunchhay) - Team 01 MCS02 CADT. Perfect for learning data structures.',
     images: ['/bst_sso.png'],
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'),
+  metadataBase: new URL('https://bst.oudommeng.me'),
 }
 
 export default function RootLayout({
