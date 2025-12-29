@@ -427,7 +427,7 @@ export function BSTVisualizer() {
         <div className="flex items-center gap-2 md:gap-3">
           <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-[#12284C] flex items-center justify-center text-white font-bold text-base md:text-lg">B</div>
           <div>
-            <h1 className="text-sm md:text-lg font-bold tracking-tight text-[#12284C]">BST Visualizer</h1>
+            <h1 className="text-sm md:text-lg font-bold tracking-tight text-[#12284C]">BST Visualizer - By SSO</h1>
             <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Sequence Animator</p>
           </div>
         </div>
