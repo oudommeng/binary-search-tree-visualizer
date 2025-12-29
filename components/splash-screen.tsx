@@ -188,7 +188,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { name: "Pun Solita", role: "Dev" },
-                    { name: "Meng Oudom", role: "Lead" },
+                    { name: "Meng Oudom", role: "Dev" },
                     { name: "Khoun Sovansunchhay", role: "Dev" },
                   ].map((member, i) => (
                     <motion.div
